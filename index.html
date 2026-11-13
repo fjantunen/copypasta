@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CopyPasta Vault</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --surface: #131720;
+      --surface-2: #0d1017;
+      --border: #232a3b;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.16);
+      --green: #10b981;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem 5rem;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(11, 14, 20, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 0.75rem 0 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .search-wrap { position: relative; }
+    input.search {
+      width: 100%;
+      padding: 12px 44px 12px 14px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: #fff;
+      transition: border-color 0.15s;
+    }
+    input.search:focus { outline: none; border-color: var(--accent); }
+    .kbd {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+    }
+    .tag-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tag-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tag-pill:hover, .tag-pill.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #93c5fd;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.15rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card.copied {
+      border-color: var(--green);
+      box-shadow: 0 0 0 1px var(--green);
+    }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+    .title { font-weight: 600; font-size: 1.05rem; color: #f8fafc; }
+    .card-tags { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+    .card-tags span {
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+    }
+    .vars {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 0.65rem;
+      margin-top: 0.85rem;
+      padding: 0.75rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .var-group { display: flex; flex-direction: column; gap: 4px; }
+    .var-group label { font-size: 11px; font-family: ui-monospace, monospace; color: #60a5fa; }
+    .var-group textarea {
+      padding: 7px 9px;
+      font-size: 13px;
+      font-family: ui-monospace, monospace;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: #fff;
+      resize: vertical;
+      min-height: 34px;
+      line-height: 1.35;
+    }
+    .var-group textarea:focus { outline: none; border-color: var(--accent); }
+    .preview-wrap { position: relative; margin-top: 0.85rem; }
+    pre {
+      background: var(--surface-2);
+      padding: 12px 14px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13.5px;
+      line-height: 1.5;
+      margin: 0;
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      cursor: text;
+    }
+    pre:focus { outline: none; border-color: var(--accent); }
+    .edit-hint {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      font-size: 10px;
+      color: var(--muted);
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    .hl {
+      background: var(--accent-soft);
+      color: #93c5fd;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .actions { display: flex; gap: 6px; flex-shrink: 0; }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: transform 0.08s, background 0.15s;
+    }
+    button:active { transform: scale(0.97); }
+    button:hover { background: #2563eb; }
+    button.btn-done { background: var(--green); }
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 10px;
+    }
+    button.btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--green);
+      color: #052e16;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: all 0.2s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="search-wrap">
+      <input type="text" id="search" class="search" placeholder="Search prompts or press / to jump here..." autofocus>
+      <span class="kbd">/</span>
+    </div>
+    <div class="tag-bar" id="tagBar"></div>
+  </div>
+
+  <div id="list"></div>
+  <div class="toast" id="toast">Copied to clipboard!</div>
+
+  <script>
+    let prompts = [];
+    let activeTag = '';
+
+    fetch('prompts.md?t=' + Date.now())
+      .then(r => r.text())
+      .then(md => {
+        prompts = md.split(/\n---\n/).map((block, idx) => {
+          const lines = block.trim().split('\n');
+          const title = (lines[0] || '').replace(/^#\s*/, '');
+          const tags = (lines[1] || '').match(/`([^`]+)`/g)?.map(t => t.replace(/`/g, '')) || [];
+          const body = lines.slice(2).join('\n').trim();
+          const vars = [...new Set([...body.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1].trim()))];
+          return { id: idx, title, tags, body, vars, values: {}, customText: null };
+        }).filter(p => p.title && p.body);
+
+        renderTags();
+        filterAndRender();
+      });
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function buildPromptHtml(p) {
+      let text = escapeHtml(p.body);
+      p.vars.forEach(v => {
+        const val = p.values[v];
+        const escapedVar = escapeHtml(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{\\s*${escapedVar}\\s*\\}\\}`, 'g');
+        const replacement = val
+          ? `<span class="hl">${escapeHtml(val)}</span>`
+          : `<span class="hl">{{${escapeHtml(v)}}}</span>`;
+        text = text.replace(regex, replacement);
+      });
+      return text;
+    }
+
+    function renderTags() {
+      const allTags = [...new Set(prompts.flatMap(p => p.tags))].sort();
+      const bar = document.getElementById('tagBar');
+      if (!allTags.length) return;
+      bar.innerHTML = [`<span class="tag-pill ${activeTag === '' ? 'active' : ''}" onclick="setTag('')">All (${prompts.length})</span>`]
+        .concat(allTags.map(t => `<span class="tag-pill ${activeTag === t ? 'active' : ''}" onclick="setTag('${escapeHtml(t)}')">#${escapeHtml(t)}</span>`))
+        .join('');
+    }
+
+    function setTag(tag) {
+      activeTag = activeTag === tag ? '' : tag;
+      renderTags();
+      filterAndRender();
+    }
+
+    function filterAndRender() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const filtered = prompts.filter(p => {
+        const matchesTag = !activeTag || p.tags.includes(activeTag);
+        const matchesQuery = (p.title + ' ' + p.tags.join(' ') + ' ' + p.body).toLowerCase().includes(q);
+        return matchesTag && matchesQuery;
+      });
+      render(filtered);
+    }
+
+    function render(items) {
+      document.getElementById('list').innerHTML = items.map(p => `
+        <div class="card" id="card-${p.id}">
+          <div class="header">
+            <div>
+              <div class="title">${escapeHtml(p.title)}</div>
+              <div class="card-tags">${p.tags.map(t => `<span>#${escapeHtml(t)}</span>`).join('')}</div>
+            </div>
+            <div class="actions">
+              ${(p.vars.length || p.customText !== null) ? `<button class="btn-ghost" onclick="resetCard(${p.id})" title="Reset variables & edits">Reset</button>` : ''}
+              <button id="copy-btn-${p.id}" onclick="copyText(${p.id})">📋 Copy</button>
+            </div>
+          </div>
+          ${p.vars.length ? `
+            <div class="vars">
+              ${p.vars.map(v => `
+                <div class="var-group">
+                  <label>{{${escapeHtml(v)}}}</label>
+                  <textarea rows="1" data-id="${p.id}" data-var="${escapeHtml(v)}" placeholder="Paste ${escapeHtml(v)}..." oninput="updateVar(this)">${escapeHtml(p.values[v] || '')}</textarea>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          <div class="preview-wrap">
+            <pre id="preview-${p.id}" contenteditable="true" spellcheck="false" oninput="manualEdit(${p.id})">${p.customText !== null ? escapeHtml(p.customText) : buildPromptHtml(p)}</pre>
+            <span class="edit-hint">Click text to tweak inline</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateVar(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+      const id = Number(el.dataset.id);
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      p.values[el.dataset.var] = el.value;
+      p.customText = null;
+      document.getElementById(`preview-${id}`).innerHTML = buildPromptHtml(p);
+    }
+
+    function manualEdit(id) {
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      p.customText = document.getElementById(`preview-${id}`).innerText;
+    }
+
+    function resetCard(id) {
+      const p = prompts.find(x => x.id === id);
+      if (!p) return;
+      p.values = {};
+      p.customText = null;
+      filterAndRender();
+    }
+
+    function copyText(id) {
+      const pre = document.getElementById(`preview-${id}`);
+      const card = document.getElementById(`card-${id}`);
+      const btn = document.getElementById(`copy-btn-${id}`);
+      if (!pre) return;
+
+      navigator.clipboard.writeText(pre.innerText.trim());
+
+      card.classList.add('copied');
+      btn.classList.add('btn-done');
+      btn.textContent = '✓ Copied';
+
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+
+      setTimeout(() => {
+        card.classList.remove('copied');
+        btn.classList.remove('btn-done');
+        btn.textContent = '📋 Copy';
+        toast.classList.remove('show');
+      }, 1300);
+    }
+
+    document.getElementById('search').addEventListener('input', filterAndRender);
+
+    document.addEventListener('keydown', e => {
+      const search = document.getElementById('search');
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.activeElement.isContentEditable) {
+        e.preventDefault();
+        search.focus();
+        search.select();
+      } else if (e.key === 'Escape' && document.activeElement === search) {
+        search.value = '';
+        filterAndRender();
+        search.blur();
+      }
+    });
+  </script>
+</body>
+</html>
